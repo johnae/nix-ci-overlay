@@ -1,3 +1,3 @@
-### Nix Overlay for Buildkite
+### My Nix Overlay
 
-Used in my buildkite builds. The docker image itself is here as well in the form of a Nix expression.
+Used in CI builds for example, but also for whatever else. The buildkite docker image itself is defined here as well in the form of a Nix expression.
