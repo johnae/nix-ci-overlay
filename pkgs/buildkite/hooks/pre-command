@@ -20,3 +20,11 @@ else
   cachix use insane
 fi
 touch "/tmp/$BUILDKITE_AGENT_ID-cache"
+
+if [ -e "/tmp/$BUILDKITE_AGENT_ID-docker" ]; then
+  echo --- Already logged in to docker registry
+else
+  echo --- Logging in to docker registry
+  echo "$DOCKER_PASS" | nix-shell -I nixpkgs="$INSANEPKGS" -p docker "docker login -u \"$DOCKER_USER\" --password-stdin"
+fi
+touch "/tmp/$BUILDKITE_AGENT_ID-docker"
