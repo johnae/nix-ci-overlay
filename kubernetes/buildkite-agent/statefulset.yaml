@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
  name: buildkite-agent-linux
-# namespace: buildkite
 spec:
  serviceName: buildkite-agent-linux
  replicas: 2
@@ -36,10 +35,11 @@ spec:
                values:
                - buildkite-agent-linux
            topologyKey: "kubernetes.io/hostname"
+     serviceAccountName: buildkite-scheduler-serviceaccount
      initContainers:
        - name: buildkite-init
-         image: johnae/buildkite-nix:v3.13.0-2.2
-         imagePullPolicy: Always
+         image: johnae/buildkite-nix
+         imagePullPolicy: IfNotPresent
          volumeMounts:
            - name: buildkite
              mountPath: /nixstore
@@ -59,13 +59,11 @@ spec:
              subPath: nix
              mountPath: /nix
        - name: buildkite-agent
-         image: johnae/buildkite-nix:v3.13.0-2.2
-         imagePullPolicy: Always
+         image: johnae/buildkite-nix
+         imagePullPolicy: IfNotPresent
          envFrom:
            - secretRef:
                name: buildkite-agent-env
-           - secretRef:
-               name: cachix-signing-key
          env:
            - name: USER
              value: root
@@ -103,4 +101,4 @@ spec:
        accessModes: [ "ReadWriteOnce" ]
        resources:
          requests:
-           storage: 50Gi
+           storage: 20Gi

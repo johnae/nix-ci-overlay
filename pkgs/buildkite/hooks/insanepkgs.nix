@@ -15,13 +15,13 @@ let
     if [ -z "$INSANEPKGS_REF" ]; then
       cat <<EOF
       INSANEPKGS_REF env var not set, please set it to a tag, branch
-      or commit in the https://github.com/johnae/nix-ci-overlay repository.
+      or commit in the https://github.com/johnae/nix-overlay repository.
     EOF
       exit 1
     fi
 
     commit="$(${pkgs.curl}/bin/curl -s --fail -S -u "$GITHUB_USER":"$GITHUB_TOKEN" \
-                https://api.github.com/repos/johnae/nix-ci-overlay/commits/"$INSANEPKGS_REF" | \
+                https://api.github.com/repos/johnae/nix-overlay/commits/"$INSANEPKGS_REF" | \
                 ${pkgs.jq}/bin/jq -r '.sha')"
 
     mkdir -p /tmp
@@ -30,7 +30,7 @@ let
     if [ ! -d "$out" ]; then
       rm -rf "$out"
       ${pkgs.curl}/bin/curl --fail -S -u "$GITHUB_USER":"$GITHUB_TOKEN" -L -o "$dl" \
-          https://github.com/johnae/nix-ci-overlay/archive/"$commit".tar.gz
+          https://github.com/johnae/nix-overlay/archive/"$commit".tar.gz
       mkdir -p "$out"
       cd "$out"
       tar zxf "$dl" --strip-components=1
