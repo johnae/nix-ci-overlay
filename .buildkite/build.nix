@@ -6,6 +6,7 @@ stdenv.mkDerivation {
        strict-bash
        docker
        kustomize
+       kubectl
        jq
   ];
 }
