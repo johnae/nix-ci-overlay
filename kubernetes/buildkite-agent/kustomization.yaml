@@ -1,3 +1,4 @@
 resources:
 - statefulset.yaml
-- rbac.yaml
+# not included to enable automatic deploys (don't want to give the build process that much access)
+# - rbac.yaml
