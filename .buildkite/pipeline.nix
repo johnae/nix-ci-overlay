@@ -48,7 +48,7 @@ in
     wait
 
     (deploy-to-kubernetes {
-      application = PROJECT_NAME;
+      application = "buildkite-agent";
       shortsha = SHORTSHA;
       manifests-path = "kubernetes/buildkite-agent";
       approval = false;
