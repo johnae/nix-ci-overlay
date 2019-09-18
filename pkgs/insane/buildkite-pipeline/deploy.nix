@@ -4,7 +4,7 @@ let
   deploy-to-kubernetes = {
                        application,
                        shortsha,
-                       manifest-cmd,
+                       manifests-path,
                        image,
                        imageTag,
                        agents ? { queue = "linux"; },
