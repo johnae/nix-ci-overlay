@@ -5,6 +5,8 @@ let
                        application,
                        shortsha,
                        manifest-cmd,
+                       image,
+                       imageTag,
                        agents ? { queue = "linux"; },
                        triggered_pipeline ? "gitops",
                        approval ? true,
@@ -27,6 +29,8 @@ let
       stepenv = env // {
         APPLICATION = application;
         APP_SHORTSHA = shortsha;
+        IMAGE = image;
+        IMAGE_TAG = imageTag;
       };
 
       maybe-block = if approval then
@@ -42,7 +46,7 @@ let
           build = {
             env = stepenv;
             meta_data = {
-              manifest = ''$(${manifest-cmd} | base64 -w0)'';
+              manifest = ''$(nix-shell -I nixpkgs=$NIXPKGS -p kubectl --run 'kubectl kustomize ${manifests-path} | base64 -w0')'';
             };
           };
           dynamic = true;
