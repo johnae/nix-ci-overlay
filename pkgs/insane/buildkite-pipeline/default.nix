@@ -6,6 +6,7 @@ let
 
   isWait = step: step == "wait";
   isCommand = step: !(isWait step) && hasAttr "command" step;
+  isTrigger = step: !(isWait step) && hasAttr "trigger" step;
   isBlock = step: !(isWait step) && hasAttr "block" step;
 
   step = label: {
@@ -15,10 +16,46 @@ let
     artifact_paths ? null,
     timeout ? 600,
     only ? true,
+    soft_fail ? false,
+    num_retries ? 0,
+    concurrency ? null,
+    concurrency_group ? null,
     ...
-  }: { inherit label timeout command env agents only; };
+  }: { inherit label timeout command env agents only soft_fail
+               num_retries concurrency concurrency_group; };
 
   cmd = step;
+
+  trigger = label: {
+      trigger,
+      build ? {},
+      agents ? [],
+      async ? false,
+      only ? true,
+      branches ? "master",
+      dynamic ? false,
+      ...
+  }: if dynamic then
+    (step "Dynamically build trigger: ${label}" {
+      inherit only agents;
+      command = ''
+      cat<<JSON | buildkite-agent pipeline upload --no-interpolation
+      {
+        "steps": [
+           {
+             "trigger": "${trigger}",
+             "label": "${label}",
+             "build": ${toJSON build}
+           }
+        ]
+      }
+      JSON
+      '';
+    })
+  else
+    {
+      inherit trigger build async only branches label;
+    };
 
   block-text = {
     text,
@@ -69,13 +106,23 @@ let
         if queue == "linux" then ":nix: :linux: ${label}"
         else if queue == "macos" then ":nix: :mac: ${label}"
         else label;
+      when = cond: value: if cond then value else {};
+      ## turns one step into many based on given list of agents
       explode-build-step = step:
-          map (agents: { inherit agents;
-                         inherit (step) command env timeout;
-                         label = augment-label step.label agents.queue;
-                       })
-                       (if isAttrs step.agents then [ step.agents ]
-                        else (unique step.agents));
+          map (agents:
+                    { inherit agents;
+                      inherit (step) command env timeout soft_fail;
+                      label = augment-label step.label agents.queue;
+                    }
+                    // (when (step.num_retries > 0) (
+                       { retry = { automatic = { exit_status = "*"; limit = step.num_retries; }; }; }
+                       ))
+                    // (when (hasAttr "concurrency" step && hasAttr "concurrency_group" step) (
+                             { inherit (step) concurrency concurrency_group; }
+                       ))
+              )
+              (if isAttrs step.agents then [ step.agents ]
+               else (unique step.agents));
     in
       trim-last-wait
         (remove-adjacent-dups
@@ -86,11 +133,18 @@ let
                         else if (isBlock step) then
                           filterAttrsRecursive (n: v: v!= null)
                             { inherit (step) block fields prompt branches; }
-                        else step)
-                 (filter (step: (isWait step) || step.only) steps))));
+                        else if (isWait step) then step
+                        else removeAttrs step [ "only" ] )
+                 ## this always let's through wait steps and steps where "only" is true
+                 (filter (step: (isWait step) || step.only) (flatten steps)))));
 
   wait = "wait";
 
+  deploy = import ./deploy.nix { inherit step block trigger wait; };
+
 in
 
-  { inherit step cmd block wait pipeline; }
+  {
+    inherit step cmd block trigger wait pipeline;
+    inherit (deploy) deploy-to-kubernetes;
+  }
