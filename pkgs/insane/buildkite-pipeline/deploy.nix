@@ -62,8 +62,7 @@ let
             echo "--- Syncing cluster state"
             curl -sSL -o ./argocd https://"$ARGOCD_SERVER"/download/argocd-linux-amd64
             chmod +x argocd
-            ./argocd app sync "$APPLICATION"
-            ./argocd app wait --health "$APPLICATION"
+            ./argocd app wait "$APPLICATION"
           '';
         })
 
