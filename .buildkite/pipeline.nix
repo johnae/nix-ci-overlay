@@ -56,24 +56,6 @@ in
       imageTag = "bk-${getEnv "BUILDKITE_BUILD_NUMBER"}";
     })
 
-
-    #(step ":pipeline: Deploy" {
-    #  agents = { queue = "linux"; inherit hostname; };
-    #  env = { inherit DOCKER_REGISTRY PROJECT_NAME; };
-    #  command = strict-bash ''
-    #    echo --- Apply kubernetes manifest
-
-    #    cat<<NEWTAG | tee -a kubernetes/buildkite-agent/kustomization.yaml
-
-    #    imageTags:
-    #    - name: $DOCKER_REGISTRY/$PROJECT_NAME
-    #      newTag: bk-$BUILDKITE_BUILD_NUMBER
-    #    NEWTAG
-
-    #    kustomize build kubernetes/buildkite-agent | kubectl apply -f -
-    #  '';
-    #})
-
   ]);
 
 }
