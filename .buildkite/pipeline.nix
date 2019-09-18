@@ -50,16 +50,10 @@ in
     (deploy-to-kubernetes {
       application = PROJECT_NAME;
       shortsha = SHORTSHA;
-      manifest-cmd = strict-bash ''
-        cat<<NEWTAG>kubernetes/buildkite-agent/kustomization.yaml
-
-        imageTags:
-        - name: $DOCKER_REGISTRY/$PROJECT_NAME
-          newTag: bk-$BUILDKITE_BUILD_NUMBER
-        NEWTAG
-        kubectl kustomize kubernetes/buildkite-agent
-      '';
+      manifests-path = "kubernetes/buildkite-agent";
       approval = false;
+      image = "${DOCKER_REGISTRY}/${PROJECT_NAME}";
+      imageTag = "bk-${getEnv "BUILDKITE_BUILD_NUMBER"}";
     })
 
 
