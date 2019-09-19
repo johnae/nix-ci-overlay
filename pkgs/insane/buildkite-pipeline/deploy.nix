@@ -41,7 +41,7 @@ let
       [
         maybe-block
 
-        (trigger ":k8s: DEPLOY: commit ${stepenv.APPLICATION} cluster state" {
+        (trigger ":github: DEPLOY: commit ${stepenv.APPLICATION} cluster state" {
           trigger = triggered_pipeline;
           build = {
             env = stepenv;
@@ -55,13 +55,17 @@ let
 
         wait
 
-        (step ":k8s: DEPLOY ${stepenv.APPLICATION}: wait for cluster state convergence" {
+        (step ":k8s: DEPLOY ${stepenv.APPLICATION}: await cluster state convergence" {
           inherit agents only;
           env = stepenv;
           command = command-wrapper ''
-            echo "--- Syncing cluster state"
             curl -sSL -o ./argocd https://"$ARGOCD_SERVER"/download/argocd-linux-amd64
             chmod +x argocd
+
+            echo "--- Syncing cluster state of $APPLICATION"
+            ./argocd app sync "$APPLICATION"
+
+            echo "--- Awaiting cluster convergence"
             ./argocd app wait "$APPLICATION"
           '';
         })
