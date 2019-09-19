@@ -47,7 +47,7 @@ let
           build = {
             env = stepenv;
             meta_data = {
-              manifest = ''$(nix-shell -I nixpkgs=$NIXPKGS -p kubectl --run 'kubectl kustomize ${manifests-path} | base64 -w0')'';
+              manifest = ''$(nix-shell -I nixpkgs=$INSANEPKGS -p kubectl --run 'kubectl kustomize ${manifests-path} | base64 -w0')'';
             };
           };
           dynamic = true;
