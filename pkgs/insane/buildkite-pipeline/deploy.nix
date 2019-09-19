@@ -15,18 +15,6 @@ let
                        env ? {}}:
     let
 
-      command-wrapper = command: ''
-      nix-shell -I nixpkgs="$INSANEPKGS" \
-      -p insane-lib.strict-bash \
-      -p findutils \
-      -p curl \
-      -p jq \
-      -p kubectl \
-      --run strict-bash <<'NIXSH'
-      ${command}
-      NIXSH
-      '';
-
       stepenv = env // {
         APPLICATION = application;
         APP_SHORTSHA = shortsha;
@@ -59,23 +47,28 @@ let
         (step ":k8s: DEPLOY ${stepenv.APPLICATION}: sync cluster state" {
           inherit agents only;
           env = stepenv;
-          command = command-wrapper ''
-            curl -sSL -o ./argocd https://"$ARGOCD_SERVER"/download/argocd-linux-amd64
-            chmod +x argocd
+          command = ''
+            nix-shell -I nixpkgs="$INSANEPKGS" \
+            -p insane-lib.strict-bash \
+            -p curl \
+            --run strict-bash <<'NIXSH'
+              curl -sSL -o ./argocd https://"$ARGOCD_SERVER"/download/argocd-linux-amd64
+              chmod +x argocd
 
-            echo "--- Syncing cluster state of $APPLICATION"
-            ./argocd app sync "$APPLICATION"
+              echo "--- Syncing cluster state of $APPLICATION"
+              ./argocd app sync "$APPLICATION"
 
-            ${if wait-for-completion then
-              ''
-              echo "--- Awaiting cluster convergence"
-              ./argocd app wait "$APPLICATION"
-              ''
-              else
-              ''
-              echo "--- Skipping waiting for cluster convergence"
-              ''
-            }
+              ${if wait-for-completion then
+                ''
+                  echo "--- Awaiting cluster convergence"
+                  ./argocd app wait "$APPLICATION"
+                ''
+                else
+                ''
+                  echo "--- Skipping waiting for cluster convergence"
+                ''
+              }
+            NIXSH
           '';
         })
 

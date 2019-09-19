@@ -36,7 +36,7 @@ let
       dynamic ? false,
       ...
   }: if dynamic then
-    (step "Dynamically build trigger: ${label}" {
+    (step "Modify pipeline, add: '${label}'" {
       inherit only agents;
       command = ''
       cat<<JSON | buildkite-agent pipeline upload --no-interpolation
