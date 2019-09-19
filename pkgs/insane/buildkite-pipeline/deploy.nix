@@ -6,9 +6,10 @@ let
                        shortsha,
                        manifests-path,
                        image,
-                       imageTag,
+                       image-tag,
                        agents ? { queue = "linux"; },
-                       triggered_pipeline ? "gitops",
+                       triggered-pipeline ? "gitops",
+                       wait-for-completion ? true,
                        approval ? true,
                        only ? true,
                        env ? {}}:
@@ -30,7 +31,7 @@ let
         APPLICATION = application;
         APP_SHORTSHA = shortsha;
         IMAGE = image;
-        IMAGE_TAG = imageTag;
+        IMAGE_TAG = image-tag;
       };
 
       maybe-block = if approval then
@@ -42,7 +43,7 @@ let
         maybe-block
 
         (trigger ":github: DEPLOY: commit ${stepenv.APPLICATION} cluster state" {
-          trigger = triggered_pipeline;
+          trigger = triggered-pipeline;
           build = {
             env = stepenv;
             meta_data = {
@@ -55,7 +56,7 @@ let
 
         wait
 
-        (step ":k8s: DEPLOY ${stepenv.APPLICATION}: await cluster state convergence" {
+        (step ":k8s: DEPLOY ${stepenv.APPLICATION}: sync cluster state" {
           inherit agents only;
           env = stepenv;
           command = command-wrapper ''
@@ -65,8 +66,16 @@ let
             echo "--- Syncing cluster state of $APPLICATION"
             ./argocd app sync "$APPLICATION"
 
-            echo "--- Awaiting cluster convergence"
-            ./argocd app wait "$APPLICATION"
+            ${if wait-for-completion then
+              ''
+              echo "--- Awaiting cluster convergence"
+              ./argocd app wait "$APPLICATION"
+              ''
+              else
+              ''
+              echo "--- Skipping waiting for cluster convergence"
+              ''
+            }
           '';
         })
 

@@ -52,8 +52,9 @@ in
       shortsha = SHORTSHA;
       manifests-path = "kubernetes/buildkite-agent";
       approval = false;
+      wait-for-completion = false; # can't wait as buildkite is being redeployed
       image = "${DOCKER_REGISTRY}/${PROJECT_NAME}";
-      imageTag = "bk-${getEnv "BUILDKITE_BUILD_NUMBER"}";
+      image-tag = "bk-${getEnv "BUILDKITE_BUILD_NUMBER"}";
     })
 
   ]);
