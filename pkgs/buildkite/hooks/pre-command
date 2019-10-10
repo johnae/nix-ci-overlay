@@ -16,8 +16,8 @@ if [ -e "/tmp/$BUILDKITE_AGENT_ID-cache" ]; then
 else
   echo --- "Installing the cachix cli tools..."
   nix-env -iA cachix -f https://cachix.org/api/v1/install
-  echo --- "Enabling the insane cache..."
-  cachix use insane
+  echo --- "Enabling the cachix cache..."
+  cachix use a23b63
 fi
 touch "/tmp/$BUILDKITE_AGENT_ID-cache"
 
