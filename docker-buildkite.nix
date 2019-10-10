@@ -19,8 +19,8 @@ let
 
   nixImage = dockerTools.pullImage {
     imageName = "nixpkgs/nix";
-    imageDigest = "sha256:b847b7c77a91578ebb075b91e6e8961a2e8a0dae033cb24c01126c6406826def";
-    sha256 = "1m8v64w5bnz9y44fm74qryzzchf0s5p3kgxypw6rxhxgx68bfgpg";
+    imageDigest = "sha256:abc1a7afa2eb42f9f6ba4a7d427a1e5352ac4231332da5ee948b0d5d71351c68";
+    sha256 = "1jw5kx4j422l9sj86nd5v6s3hlgmvp4p3lmmmf107b1yqy917xki";
   };
 
 in
