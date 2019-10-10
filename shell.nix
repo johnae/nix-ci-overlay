@@ -28,11 +28,10 @@ let
 in
   pkgs.mkShell {
     buildInputs = [
-                update-buildkite-version
+       update-buildkite-version
     ];
+    INSANEPKGS = toString ./.;
     shellHook = ''
-      export INSANEPKGS="$(pwd)"
-      NIX_PATH="$(echo "$NIX_PATH" | sed -E 's|insanepkgs=[^:]+:||g')"
-      export NIX_PATH=insanepkgs=$INSANEPKGS/default.nix:$NIX_PATH
+      export NIX_PATH=insanepkgs=$INSANEPKGS/default.nix''${NIX_PATH:+:}$NIX_PATH
     '';
   }
