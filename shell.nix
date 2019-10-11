@@ -25,13 +25,28 @@ let
     }
     EOF
   '';
+
+  replace_or_insert_nix_path = regex: value:
+    let
+      existing_path = builtins.match regex (builtins.getEnv "NIX_PATH");
+    in
+      if existing_path != null then
+        builtins.replaceStrings existing_path
+          [ value ]
+          (builtins.getEnv "NIX_PATH")
+      else
+        "${value}:${builtins.getEnv "NIX_PATH"}";
+
+  INSANEPKGS = toString ./.;
+  NIX_PATH = replace_or_insert_nix_path "(insanepkgs=[^:]+).*"
+                                        "insanepkgs=${INSANEPKGS}/default.nix";
+
+
+
 in
   pkgs.mkShell {
     buildInputs = [
        update-buildkite-version
     ];
-    INSANEPKGS = toString ./.;
-    shellHook = ''
-      export NIX_PATH=insanepkgs=$INSANEPKGS/default.nix''${NIX_PATH:+:}$NIX_PATH
-    '';
+    inherit INSANEPKGS NIX_PATH;
   }
