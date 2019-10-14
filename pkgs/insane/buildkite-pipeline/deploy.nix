@@ -52,7 +52,7 @@ let
             -p insane-lib.strict-bash \
             -p curl \
             --run strict-bash <<'NIXSH'
-              curl -sSL -o ./argocd https://"$ARGOCD_SERVER"/download/argocd-linux-amd64
+              curl -sSL -o ./argocd https://argocd.insane.se/download/argocd-linux-amd64
               chmod +x argocd
 
               echo "--- Syncing cluster state of $APPLICATION"
