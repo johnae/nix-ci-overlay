@@ -56,12 +56,12 @@ let
               chmod +x argocd
 
               echo "--- Syncing cluster state of $APPLICATION"
-              ./argocd app sync "$APPLICATION"
+              ./argocd --plaintext app sync "$APPLICATION"
 
               ${if wait-for-completion then
                 ''
                   echo "--- Awaiting cluster convergence"
-                  ./argocd app wait "$APPLICATION"
+                  ./argocd --plaintext app wait "$APPLICATION"
                 ''
                 else
                 ''
