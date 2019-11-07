@@ -56,7 +56,9 @@ let
               chmod +x argocd
 
               echo "--- Syncing cluster state of $APPLICATION"
-              ./argocd --plaintext app sync "$APPLICATION"
+              set +e
+              ./argocd --plaintext app sync "$APPLICATION" || true
+              set -e
 
               ${if wait-for-completion then
                 ''
