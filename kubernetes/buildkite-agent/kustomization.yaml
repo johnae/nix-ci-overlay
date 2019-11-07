@@ -1,3 +1,2 @@
 resources:
 - statefulset.yaml
-- rbac.yaml
