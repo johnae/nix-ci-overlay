@@ -13,7 +13,6 @@ spec:
      labels:
        app: buildkite-agent-linux
    spec:
-     serviceAccountName: buildkite-scheduler-serviceaccount
      initContainers:
        - name: buildkite-init
          image: johnae/buildkite-nix
