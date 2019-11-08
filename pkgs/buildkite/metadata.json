@@ -1,11 +1,11 @@
 {
-  "version": "3.15.2",
+  "version": "3.16.0",
   "x86_64-linux": {
-    "sha256": "1qwkfvzn6sw4sznn4gl8f6cvhyyqkys410p9viwnp7xjln92h4l6",
-    "url": "https://github.com/buildkite/agent/releases/download/v3.15.2/buildkite-agent-linux-amd64-3.15.2.tar.gz"
+    "sha256": "1ycc298m85bp1m3h34xr94va151hcjkx7sxk3c8idza63p1wvr33",
+    "url": "https://github.com/buildkite/agent/releases/download/v3.16.0/buildkite-agent-linux-amd64-3.16.0.tar.gz"
   },
   "x86_64-darwin": {
-    "sha256": "00l57kmbshy056vmpidi58g1l9wsrgmkznjixqyx74kc22dr9cbc",
-    "url": "https://github.com/buildkite/agent/releases/download/v3.15.2/buildkite-agent-darwin-amd64-3.15.2.tar.gz"
+    "sha256": "0pkjhqb6n7wvswc3n0irv1s15417g87wnj3v8x3qi75lphgb4v3h",
+    "url": "https://github.com/buildkite/agent/releases/download/v3.16.0/buildkite-agent-darwin-amd64-3.16.0.tar.gz"
   }
 }
