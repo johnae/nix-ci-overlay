@@ -1,8 +1,31 @@
-{stdenv, lib, shellcheck, coreutils, writeTextFile, ...}:
+{ stdenv, lib, shellcheck, coreutils, writeTextFile, ... }:
 
 with lib;
 with builtins;
+let
+  changeFirst = s: fn:
+    let
+      c = stringToCharacters s;
+    in concatStringsSep "" ([ (fn (head c)) ] ++ (tail c));
+  capitalize = s: changeFirst s toUpper;
+  uncapitalize = s: changeFirst s toLower;
+  toCamelCase = s: concatStringsSep "" (map (capitalize) (splitString "_" s));
+  isCamelCase = s: s == (toCamelCase s);
+  toMixedCase = s: uncapitalize (toCamelCase s);
+  isMixedCase = s: s == (toMixedCase s);
+  isAlpha = c: (toUpper c) != (toLower c);
+  isUpper = c: (isAlpha c) && c == (toUpper c);
+  isLower = c: !(isUpper c);
+  toSnakeCase = s: concatStringsSep "" (concatMap (x:
+    if isUpper x then [ "_" (toLower x) ] else [ x ]
+  ) (stringToCharacters s)
+  );
+  isSnakeCase = s: s == (toSnakeCase s);
+in
 rec {
+  inherit changeFirst capitalize uncapitalize toCamelCase
+    toMixedCase toSnakeCase isUpper isLower
+    isCamelCase isMixedCase isSnakeCase;
   ## Helper functions for generating strings from sets
   ## For example, when sep is ",", x is { a = "123"; b = "456" }
   ## and fun is (key: value: ''${key}: ${value}'') the resulting string is:
@@ -23,52 +46,52 @@ rec {
   substituteInPlace = file: substitutions: ''
     substituteInPlace ${file} \
       ${setToStringSep " "
-                       substitutions
-                       (name: value: '' --subst-var-by ${name} "${value}"'' )}
+    substitutions
+    (name: value: '' --subst-var-by ${name} "${value}"'')}
   '';
 
   ## A helper for creating shell script derivations from files
   ## see above - enables one to get syntax highlighting while
   ## developing.
   mkStrictShellScript =
-  { name
-  , src
-  , substitutions ? {}
-  }: stdenv.mkDerivation {
-    inherit name;
-    buildCommand = ''
-      install -v -D -m755 ${src} $out/bin/${name}
-      ${substituteInPlace "$out/bin/${name}" substitutions}
+    { name
+    , src
+    , substitutions ? {}
+    }: stdenv.mkDerivation {
+      inherit name;
+      buildCommand = ''
+        install -v -D -m755 ${src} $out/bin/${name}
+        ${substituteInPlace "$out/bin/${name}" substitutions}
 
-      if S=$(grep -E '@[a-zA-Z0-9-]+@' < $out/bin/${name}); then
-        WHAT=$(echo "$S" | sed 's|.*\(@.*@\).*|\1|g')
-        cat<<ERR
+        if S=$(grep -E '@[a-zA-Z0-9-]+@' < $out/bin/${name}); then
+          WHAT=$(echo "$S" | sed 's|.*\(@.*@\).*|\1|g')
+          cat<<ERR
 
-        ${name}:
-           '$WHAT'
-             ^ this doesn't look right, forgotten substitution?
+          ${name}:
+             '$WHAT'
+               ^ this doesn't look right, forgotten substitution?
 
-      ERR
-        exit 1
-      fi
+        ERR
+          exit 1
+        fi
 
-      ## check the syntax
-      ${stdenv.shell} -n $out/bin/${name}
+        ## check the syntax
+        ${stdenv.shell} -n $out/bin/${name}
 
-      ## shellcheck
-      ${shellcheck}/bin/shellcheck -x -e SC1117 -s bash -f tty $out/bin/${name}
-    '';
-  };
+        ## shellcheck
+        ${shellcheck}/bin/shellcheck -x -e SC1117 -s bash -f tty $out/bin/${name}
+      '';
+    };
 
 
   ## A helper for creating shell script derivations from files
   ## see above - enables one to get syntax highlighting while
   ## developing.
   cmdWithSubCommands =
-  { name
-  , paths
-  , description
-  }: stdenv.mkDerivation rec {
+    { name
+    , paths
+    , description
+    }: stdenv.mkDerivation rec {
       inherit name;
       meta = {
         description = "${description} Part of insane tooling.";
@@ -194,7 +217,7 @@ rec {
     fi
   '';
 
-  setup = {before ? "", after ? ""}: ''
+  setup = { before ? "", after ? "" }: ''
     at_exit() {
       ${after}
     }
