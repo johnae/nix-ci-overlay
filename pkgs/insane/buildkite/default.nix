@@ -9,6 +9,7 @@ let
   SHORTSHA = substring 0 7 (LONGSHA);
   BRANCH = getEnv "BUILDKITE_BRANCH";
   COMMIT_MSG = getEnv "BUILDKITE_MESSAGE";
+  BUILDKITE_BUILD_NUMBER = getEnv "BUILDKITE_BUILD_NUMBER";
   hostname =
     let
       hn = getEnv "BUILDKITE_AGENT_META_DATA_HOSTNAME";
@@ -159,23 +160,24 @@ let
                           , dependsOn ? null
                           , ...
                           }:
-    (run "Modify pipeline, add: '${label}'" ({
-      exactCommand = ''
-        cat<<JSON | buildkite-agent pipeline upload --no-interpolation
-        {
-          "steps": [
-             {
-               "trigger": "${trigger}",
-               "label": "${label}",
-               "build": ${toJSON build}
-             }
-          ]
-        }
-        JSON
-      '';
-    }
-    // (if key != null then { inherit key; } else {})
-    // (if dependsOn != null then { inherit dependsOn; } else {})
+    (run "Modify pipeline, add: '${label}'" (
+      {
+        exactCommand = ''
+          cat<<JSON | buildkite-agent pipeline upload --no-interpolation
+          {
+            "steps": [
+               {
+                 "trigger": "${trigger}",
+                 "label": "${label}",
+                 "build": ${toJSON build}
+               }
+            ]
+          }
+          JSON
+        '';
+      }
+      // (if key != null then { inherit key; } else {})
+      // (if dependsOn != null then { inherit dependsOn; } else {})
     )
     );
 
@@ -200,15 +202,17 @@ let
           additionalBuildArgs ++ [ "--build-arg" "NPM_TOKEN=\"$NPM_TOKEN\"" ] ## double quote variable or have shellcheck yell
         else additionalBuildArgs;
     in
-      (run ":docker: Docker build" ({
-        agents = { inherit hostname; };
-        command = ''
-          ${check}
-          docker build ${concatStringsSep " " dockerArgs} -t "$PROJECT_NAME" .
-          docker tag "$PROJECT_NAME" "$DOCKER_REGISTRY/$PROJECT_NAME:$SHORTSHA"
-          docker tag "$PROJECT_NAME" "$DOCKER_REGISTRY/$PROJECT_NAME:latest"
-        '';
-      } // runArgs
+      (run ":docker: Docker build" (
+        {
+          agents = { inherit hostname; };
+          command = ''
+            ${check}
+            docker build ${concatStringsSep " " dockerArgs} -t "$PROJECT_NAME" .
+            docker tag "$PROJECT_NAME" "$DOCKER_REGISTRY/$PROJECT_NAME:$SHORTSHA"
+            docker tag "$PROJECT_NAME" "$DOCKER_REGISTRY/$PROJECT_NAME:latest"
+          '';
+        }
+        // runArgs
       )
       );
 
@@ -216,17 +220,19 @@ let
     let
       args' = removeAttrs (mapAttrs' (name: value: nameValuePair (toSnakeCase name) value) args) [ "tag_latest" ];
     in
-      (run ":docker: Docker push" ({
-        agents = { inherit hostname; };
-        command = ''
-          docker push "$DOCKER_REGISTRY/$PROJECT_NAME:$SHORTSHA"
-          ${
-        if tagLatest
-        then
-          "docker push \"$DOCKER_REGISTRY/$PROJECT_NAME:latest\""
-        else ""}
-        '';
-      } // args'
+      (run ":docker: Docker push" (
+        {
+          agents = { inherit hostname; };
+          command = ''
+            docker push "$DOCKER_REGISTRY/$PROJECT_NAME:$SHORTSHA"
+            ${
+          if tagLatest
+          then
+            "docker push \"$DOCKER_REGISTRY/$PROJECT_NAME:latest\""
+          else ""}
+          '';
+        }
+        // args'
       )
       );
 
@@ -272,81 +278,84 @@ let
           };
         }
         )
-        (run ":k8s: Deploying ${application}: waiting for cluster state convergence" ({
-          dependsOn = dependsOn ++ [ "trigger-deploy-${application}" ];
-          exactCommand = ''
-            nix-shell -I nixpkgs="$INSANEPKGS" \
-            -p insane-lib.strict-bash \
-            -p curl \
-            --run strict-bash <<'NIXSH'
-              annotate() {
-                style=''${1:-}
-                msg=''${2:-}
-                msg="$msg, see: https://argocd.insane.se/applications/${application}"
-                buildkite-agent annotate "$msg" \
-                  --style "$style" --context 'ctx-deploy-${application}'
+        (run ":k8s: Deploying ${application}: waiting for cluster state convergence"
+          (
+            {
+              dependsOn = dependsOn ++ [ "trigger-deploy-${application}" ];
+              exactCommand = ''
+                nix-shell -I nixpkgs="$INSANEPKGS" \
+                -p insane-lib.strict-bash \
+                -p curl \
+                --run strict-bash <<'NIXSH'
+                  annotate() {
+                    style=''${1:-}
+                    msg=''${2:-}
+                    msg="$msg, see: https://argocd.insane.se/applications/${application}"
+                    buildkite-agent annotate "$msg" \
+                      --style "$style" --context 'ctx-deploy-${application}'
+                  }
+                  on_exit() {
+                    err=$?
+                    if [ "$err" -gt 0 ]; then
+                      annotate error \
+                        "Failed to deploy ${application}"
+                    fi
+                  }
+                  trap on_exit EXIT
+
+                  annotate info \
+                    "Deploying ${application}"
+
+                  curl -sSL -o ./argocd https://argocd.insane.se/download/argocd-linux-amd64
+                  chmod +x argocd
+
+                  max_wait_time_secs=240
+                  current_time_secs=1
+
+                  log="$(mktemp app-list-log.XXXXXXX)"
+                  trap 'rm -f $log' EXIT
+
+                  while ! ./argocd --plaintext app list | tee -a "$log" | \
+                          grep -q "${application}"
+                  do
+                    sleep 1
+                    current_time_secs=$((current_time_secs + 1))
+                    if [ $current_time_secs -ge $max_wait_time_secs ]; then
+                       cat "$log"
+                       echo "****************************************************************************************************"
+                       echo "Waited for $max_wait_time_secs seconds but the app ${application} never showed up :-("
+                       echo "you could try a rebuild of this step if this is the first time this app has been deployed as it may"
+                       echo "sometimes take longer than $max_wait_time_secs seconds for ArgoCD to pick it up"
+                       echo "****************************************************************************************************"
+                       exit 1
+                    fi
+                  done
+
+                  annotate info \
+                    "Syncing cluster state of ${application}"
+
+                  echo "--- Syncing cluster state of ${application}"
+                  ./argocd --plaintext app sync "${application}" --async || true
+
+                  ${
+              if waitForCompletion
+              then
+                ''
+                  echo "--- Awaiting cluster convergence"
+                  ./argocd --plaintext app wait "${application}" --timeout 600
+                ''
+              else
+                ''
+                  echo "--- Skipping waiting for cluster convergence"
+                ''
               }
-              on_exit() {
-                err=$?
-                if [ "$err" -gt 0 ]; then
-                  annotate error \
-                    "Failed to deploy ${application}"
-                fi
-              }
-              trap on_exit EXIT
-
-              annotate info \
-                "Deploying ${application}"
-
-              curl -sSL -o ./argocd https://argocd.insane.se/download/argocd-linux-amd64
-              chmod +x argocd
-
-              max_wait_time_secs=240
-              current_time_secs=1
-
-              log="$(mktemp app-list-log.XXXXXXX)"
-              trap 'rm -f $log' EXIT
-
-              while ! ./argocd --plaintext app list | tee -a "$log" | \
-                      grep -q "${application}"
-              do
-                sleep 1
-                current_time_secs=$((current_time_secs + 1))
-                if [ $current_time_secs -ge $max_wait_time_secs ]; then
-                   cat "$log"
-                   echo "****************************************************************************************************"
-                   echo "Waited for $max_wait_time_secs seconds but the app ${application} never showed up :-("
-                   echo "you could try a rebuild of this step if this is the first time this app has been deployed as it may"
-                   echo "sometimes take longer than $max_wait_time_secs seconds for ArgoCD to pick it up"
-                   echo "****************************************************************************************************"
-                   exit 1
-                fi
-              done
-
-              annotate info \
-                "Syncing cluster state of ${application}"
-
-              echo "--- Syncing cluster state of ${application}"
-              ./argocd --plaintext app sync "${application}" --async || true
-
-              ${
-          if waitForCompletion
-          then
-            ''
-              echo "--- Awaiting cluster convergence"
-              ./argocd --plaintext app wait "${application}" --timeout 600
-            ''
-          else
-            ''
-              echo "--- Skipping waiting for cluster convergence"
-            ''
-          }
-              annotate success \
-                "${application} deployed"
-            NIXSH
-          '';
-        } // runArgs
-        )
+                  annotate success \
+                    "${application} deployed"
+                NIXSH
+              '';
+            }
+            // runArgs
+          )
         )
       ];
 
@@ -390,5 +399,5 @@ in
 {
   inherit run runDefaults deploy dockerBuild dockerPush block usingBuildEnv deployFunction
     usingDefaultBuildEnv hostname withCache junitAnnotate pipeline dynamicTrigger blockWhen
-    wait waitDefaults when DOCKER_REGISTRY PROJECT_NAME SHORTSHA LONGSHA;
+    wait waitDefaults when DOCKER_REGISTRY PROJECT_NAME SHORTSHA LONGSHA BUILDKITE_BUILD_NUMBER;
 }
